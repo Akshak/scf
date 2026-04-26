@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Sasso Carta Forbice - Ultra Master</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+
+</head>
+<body>
+
+<div class="container">
+
+    <h1 class="title">⚡ SASSO CARTA FORBICE ⚡</h1>
+    <p class="subtitle">Modalità Competitiva - Best of 5</p>
+
+    <div class="progress-container">
+        <div id="progress-bar"></div>
+    </div>
+
+    <div class="scoreboard">
+        <div class="card">
+            <h2>👤 Giocatore</h2>
+            <p id="player-score">0</p>
+        </div>
+        <div class="card">
+            <h2>🤖 Computer</h2>
+            <p id="computer-score">0</p>
+        </div>
+    </div>
+
+    <div class="choices">
+        <button class="choice" data-choice="sasso">✊</button>
+        <button class="choice" data-choice="carta">✋</button>
+        <button class="choice" data-choice="forbice">✌</button>
+    </div>
+
+    <div class="result-box">
+        <p id="round-result">Scegli la tua mossa...</p>
+    </div>
+
+    <div class="stats">
+        <h3>📊 Statistiche Globali</h3>
+        <p>Partite Totali: <span id="total-games">0</span></p>
+        <p>Vittorie: <span id="total-wins">0</span></p>
+        <p>Sconfitte: <span id="total-losses">0</span></p>
+        <p>Win Rate: <span id="winrate">0%</span></p>
+    </div>
+
+    <button id="reset">🔄 Nuova Partita</button>
+
+</div>
+
+<script>
+
+// 🎵 SUONI LOCALI
+const soundVictory = new Audio("sound_1.mp3"); // vittoria
+const soundScream  = new Audio("sound_2.mp3"); // urlo jumpscare
+
+soundVictory.volume = 1;
+soundScream.volume = 1;
+
+// ✅ FUNZIONI DI RICHIAMO
+function playVictorySound() {
+    soundVictory.currentTime = 0; // parte dall’inizio
+    soundVictory.play();
+}
+
+function playScreamSound() {
+    soundScream.currentTime = 0;
+    soundScream.play();
+}
+
+
+const choices = document.querySelectorAll(".choice");
+const playerScoreEl = document.getElementById("player-score");
+const computerScoreEl = document.getElementById("computer-score");
+const resultEl = document.getElementById("round-result");
+const progressBar = document.getElementById("progress-bar");
+
+const totalGamesEl = document.getElementById("total-games");
+const totalWinsEl = document.getElementById("total-wins");
+const totalLossesEl = document.getElementById("total-losses");
+const winrateEl = document.getElementById("winrate");
+
+let playerScore = 0;
+let computerScore = 0;
+
+let totalGames = parseInt(localStorage.getItem("totalGames")) || 0;
+let totalWins = parseInt(localStorage.getItem("totalWins")) || 0;
+let totalLosses = parseInt(localStorage.getItem("totalLosses")) || 0;
+
+updateStats();
+
+const options = ["sasso", "carta", "forbice"];
+const maxScore = 3;
+
+function getComputerChoice() {
+    return options[Math.floor(Math.random() * 3)];
+}
+
+function updateStats() {
+    totalGamesEl.textContent = totalGames;
+    totalWinsEl.textContent = totalWins;
+    totalLossesEl.textContent = totalLosses;
+
+    let rate = totalGames === 0 ? 0 : ((totalWins / totalGames) * 100).toFixed(1);
+    winrateEl.textContent = rate + "%";
+}
+
+function updateProgress() {
+    let progress = (playerScore / maxScore) * 100;
+    progressBar.style.width = progress + "%";
+}
+
+function determineWinner(player, computer) {
+    if (player === computer) {
+        skullExplosion();
+        return "🤝 Pareggio!";
+    }
+
+    if (
+        (player === "sasso" && computer === "forbice") ||
+        (player === "carta" && computer === "sasso") ||
+        (player === "forbice" && computer === "carta")
+    ) {
+        playerScore++;
+        return "🔥 Hai vinto il round!";
+    } else {
+        computerScore++;
+        return "💀 Il computer vince il round!";
+    }
+}
+
+choices.forEach(btn => {
+    btn.addEventListener("click", () => {
+
+        if (playerScore === maxScore || computerScore === maxScore) return;
+
+        const player = btn.dataset.choice;
+        const computer = getComputerChoice();
+
+        const result = determineWinner(player, computer);
+
+        playerScoreEl.textContent = playerScore;
+        computerScoreEl.textContent = computerScore;
+
+        resultEl.textContent =
+            `Tu: ${player} | Computer: ${computer} → ${result}`;
+
+        updateProgress();
+
+        if (playerScore === maxScore) {
+            resultEl.textContent = "🏆 HAI VINTO LA PARTITA!";
+            confettiTrombetta();
+            playVictorySound(); // 🎵 suono vittoria
+            totalGames++;
+            totalWins++;
+            saveData();
+        }
+
+        if (computerScore === maxScore) {
+            resultEl.textContent = "🤖 Il computer ha vinto la partita!";
+            loseEffect();
+
+            setTimeout(() => {
+                jumpScare();
+            }, 2000);
+
+            totalGames++;
+            totalLosses++;
+            saveData();
+        }
+
+        updateStats();
+    });
+});
+
+function saveData() {
+    localStorage.setItem("totalGames", totalGames);
+    localStorage.setItem("totalWins", totalWins);
+    localStorage.setItem("totalLosses", totalLosses);
+}
+
+document.getElementById("reset").addEventListener("click", () => {
+    resetGame();
+});
+
+// 🎆 VITTORIA
+function confettiTrombetta() {
+    const colors = ["#ff0055", "#ffdd00", "#00ffee", "#ff5500", "#aa00ff", "#00ff55"];
+    const numConfetti = 300;
+
+    for (let i = 0; i < numConfetti; i++) {
+        const c = document.createElement("div");
+        c.style.position = "fixed";
+
+        const size = Math.random() * 20 + 15;
+        c.style.width = size + "px";
+        c.style.height = size + "px";
+
+        c.style.borderRadius = "50%";
+        c.style.background = colors[Math.floor(Math.random() * colors.length)];
+        c.style.top = window.innerHeight / 2 + "px";
+        c.style.left = window.innerWidth / 2 + "px";
+        c.style.zIndex = 9999;
+        c.style.pointerEvents = "none";
+
+        const angle = Math.random() * 2 * Math.PI;
+        const speed = Math.random() * 1200 + 600;
+        const dx = Math.cos(angle) * speed;
+        const dy = Math.sin(angle) * speed;
+        const duration = Math.random() * 1.5 + 1.5;
+
+        document.body.appendChild(c);
+
+        c.animate([
+            { transform: `translate(0px, 0px) rotate(0deg) scale(1)`, opacity: 1 },
+            { transform: `translate(${dx}px, ${dy}px) rotate(1440deg) scale(0.5)`, opacity: 0 }
+        ], {
+            duration: duration * 1000,
+            easing: "ease-out",
+            fill: "forwards"
+        });
+
+        setTimeout(() => c.remove(), duration * 1000);
+    }
+}
+
+// 🔴 SCONFITTA (schermo rosso)
+function loseEffect() {
+    const overlay = document.createElement("div");
+    overlay.id = "redOverlay";
+    overlay.style.position = "fixed";
+    overlay.style.inset = "0";
+    overlay.style.background = "rgba(255,0,0,0.6)";
+    overlay.style.backdropFilter = "blur(4px)";
+    overlay.style.zIndex = "9998";
+    document.body.appendChild(overlay);
+
+    const container = document.querySelector(".container");
+
+    container.animate([
+        { transform: "translate(0,0)" },
+        { transform: "translate(-15px,10px)" },
+        { transform: "translate(15px,-10px)" },
+        { transform: "translate(-15px,10px)" },
+        { transform: "translate(15px,-10px)" },
+        { transform: "translate(0,0)" }
+    ], {
+        duration: 600,
+        iterations: 2
+    });
+
+    if (navigator.vibrate) {
+        navigator.vibrate([300, 100, 300]);
+    }
+}
+
+// 👹 ULTRA JUMPSCARE + PULSANTE RIGIOCA
+function jumpScare() {
+    playScreamSound();
+    const scare = document.createElement("div");
+    scare.id = "jumpScare";
+    scare.style.position = "fixed";
+    scare.style.inset = "0";
+    scare.style.background = "rgba(0,0,0,0.95)";
+    scare.style.display = "flex";
+    scare.style.flexDirection = "column";
+    scare.style.justifyContent = "center";
+    scare.style.alignItems = "center";
+    scare.style.zIndex = "10001";
+
+    scare.innerHTML = `
+        <div style="font-size:220px; animation: shake 0.05s infinite alternate; filter: contrast(250%) saturate(200%);">
+            👹
+        </div>
+        <button id="retryBtn" style="
+            margin-top: 50px; padding: 20px 40px; font-size:24px;
+            cursor:pointer; background:#ff0000; color:#fff; border:none; border-radius:10px;
+        ">RITORNERÒ – CLICCA QUI PER RIGIOCARE</button>
+    `;
+
+    document.body.appendChild(scare);
+
+    const audio = new Audio("https://www.myinstants.com/media/sounds/movie_1.mp3");
+    audio.volume = 1;
+    audio.play();
+
+    if (navigator.vibrate) {
+        navigator.vibrate([400,100,400,100,400]);
+    }
+
+    let flashes = 0;
+    const flashInterval = setInterval(() => {
+        scare.style.background =
+            flashes % 2 === 0
+            ? "rgba(255,0,0,0.9)"
+            : "rgba(0,0,0,0.95)";
+        flashes++;
+        if (flashes > 10) clearInterval(flashInterval);
+    }, 100);
+
+    // ✅ PULSANTE RIGIOCA
+    document.getElementById("retryBtn").addEventListener("click", () => {
+        if(document.getElementById("redOverlay")) document.getElementById("redOverlay").remove();
+        if(document.getElementById("jumpScare")) document.getElementById("jumpScare").remove();
+        resetGame();
+    });
+}
+
+// 💀 PAREGGIO
+function skullExplosion() {
+    const numSkulls = 40;
+
+    for (let i = 0; i < numSkulls; i++) {
+        const skull = document.createElement("div");
+        skull.textContent = "💀";
+        skull.style.position = "fixed";
+        skull.style.fontSize = (Math.random() * 30 + 20) + "px";
+        skull.style.top = window.innerHeight / 2 + "px";
+        skull.style.left = window.innerWidth / 2 + "px";
+        skull.style.zIndex = 9999;
+        skull.style.pointerEvents = "none";
+
+        const angle = Math.random() * 2 * Math.PI;
+        const distance = Math.random() * 600 + 200;
+        const dx = Math.cos(angle) * distance;
+        const dy = Math.sin(angle) * distance;
+        const duration = Math.random() * 1 + 1.5;
+
+        document.body.appendChild(skull);
+
+        skull.animate([
+            { transform: "translate(0,0) rotate(0deg)", opacity: 1 },
+            { transform: `translate(${dx}px, ${dy}px) rotate(720deg)`, opacity: 0 }
+        ], {
+            duration: duration * 1000,
+            easing: "ease-out",
+            fill: "forwards"
+        });
+
+        setTimeout(() => skull.remove(), duration * 1000);
+    }
+}
+
+// 🎞️ SHAKE ANIMATION
+const style = document.createElement("style");
+style.innerHTML = `
+@keyframes shake {
+    0% { transform: translate(-20px, 10px) scale(1.1); }
+    25% { transform: translate(20px, -10px) scale(1.15); }
+    50% { transform: translate(-15px, 15px) scale(1.2); }
+    75% { transform: translate(15px, -15px) scale(1.15); }
+    100% { transform: translate(0px, 0px) scale(1.1); }
+}
+`;
+document.head.appendChild(style);
+
+// 🔄 RESET PARTITA
+function resetGame() {
+    playerScore = 0;
+    computerScore = 0;
+    playerScoreEl.textContent = 0;
+    computerScoreEl.textContent = 0;
+    progressBar.style.width = "0%";
+    resultEl.textContent = "Nuova partita iniziata!";
+}
+
+</script>
